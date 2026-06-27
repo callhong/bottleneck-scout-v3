@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# 提交防护：阻止把 OpenCode/密钥误提交进开源仓库。
+# 启用：git config core.hooksPath .githooks
+set -euo pipefail
+
+fail=0
+
+# 1) 绝不允许提交真实密钥文件
+if git diff --cached --name-only | grep -qx "config/opencode.env"; then
+  echo "✗ 拒绝提交：config/opencode.env 是本地密钥文件，不应进仓库。" >&2
+  echo "  用 config/opencode.env.example 作为占位即可。" >&2
+  fail=1
+fi
+
+# 2) 扫描暂存内容里疑似密钥（sk- 开头的长串），但放过 .example 占位
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep -v '\.example$' || true)
+for f in $staged; do
+  [ -f "$f" ] || continue
+  if grep -nE 'sk-[A-Za-z0-9_-]{20,}' "$f" >/dev/null 2>&1; then
+    echo "✗ 拒绝提交：$f 中发现疑似 API 密钥（sk-...）。请移除后再提交。" >&2
+    fail=1
+  fi
+done
+
+if [ "$fail" -ne 0 ]; then
+  echo "" >&2
+  echo "如确认是误报，可用 git commit --no-verify 跳过（请谨慎）。" >&2
+  exit 1
+fi
+exit 0

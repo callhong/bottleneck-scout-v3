@@ -1,0 +1,19 @@
+bottleneck-scout-v3
+Copyright 2026 bottleneck-scout-v3 contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+----------------------------------------------------------------------
+Third-party code incorporated (see references/third-party-notices.md):
+
+a-stock-data
+  Source:  https://github.com/simonlin1212/a-stock-data
+  License: Apache License 2.0 (copy at licenses/a-stock-data-LICENSE.txt)
+  Use:     A-share public-endpoint data fetching, adapted into
+           scripts/data_sources/a_stock.py, scripts/fetch_a_stock_data.py,
+           scripts/test_a_stock_data.py. Modified from upstream; changes are
+           documented in references/third-party-notices.md.
+
+Methodology was also read (not copied) from several local research projects;
+their code, corpora, reports and trading language were NOT incorporated. See
+references/third-party-notices.md for the full list and boundaries.

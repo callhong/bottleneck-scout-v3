@@ -1,0 +1,19 @@
+{
+  "cases": [
+    {
+      "id": "hardware",
+      "prompt": "CPO/OCS 光通信供应链瓶颈：找 A/H/US 可投资公司，区分海外主线和 A股映射。",
+      "required_chain": "硬件/半导体/制造"
+    },
+    {
+      "id": "software",
+      "prompt": "AI coding agent 软件平台：判断工作流、数据/分发、付费转化和留存瓶颈。",
+      "required_chain": "软件/SaaS/平台"
+    },
+    {
+      "id": "energy",
+      "prompt": "AI 数据中心电力瓶颈：分析能源、公用事业、电气设备和电网施工价值传导。",
+      "required_chain": "能源/公用事业"
+    }
+  ]
+}

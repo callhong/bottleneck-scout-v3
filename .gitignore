@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# 密钥与本地配置（绝不入库）
+.env
+.env.*
+*.local
+config/opencode.env
+config/.render_setup.json
+
+# 系统 / 编辑器
+.DS_Store
+**/.DS_Store
+.idea/
+.vscode/
+.claude/
+
+# 个人研究产物（运行时输出，不入库；examples/ 里的示例除外）
+reports/
+
+# 临时
+*.tmp

@@ -1,0 +1,7 @@
+interface:
+  display_name: "瓶颈侦察v3"
+  short_description: "中文投研瓶颈侦察、价值传导、证据闸门与付费级研报工作流"
+  brand_color: "#9F1D20"
+  default_prompt: "Use $bottleneck-scout-v3 to analyze this market thesis with evidence gates, red-team checks, and a paid-grade Chinese research report."
+policy:
+  allow_implicit_invocation: true

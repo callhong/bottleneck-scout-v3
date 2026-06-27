@@ -1,0 +1,74 @@
+{
+  "cases": [
+    {
+      "prompt": "AI 数据中心电力 $bottleneck-scout-v3 中国投资标的分析",
+      "expected_depth": "deep_pdf",
+      "expected_mode": "深度瓶颈研报",
+      "reason": "投资标的分析默认正式交付"
+    },
+    {
+      "prompt": "AI 数据中心电力 $bottleneck-scout-v3 中国投资标的分析，快速初筛，不要 PDF",
+      "expected_depth": "standard",
+      "reason": "用户明确退出 PDF"
+    },
+    {
+      "prompt": "帮我想想 AI 电力这个方向是不是值得继续查",
+      "expected_depth": "light",
+      "reason": "研究伙伴对话"
+    },
+    {
+      "prompt": "请用 $bottleneck-scout-v3 做正式研报并生成 PDF：AI 电力中国标的",
+      "expected_depth": "deep_pdf",
+      "expected_mode": "深度瓶颈研报",
+      "reason": "明确 PDF"
+    },
+    {
+      "prompt": "这个标的能买吗",
+      "expected_depth": "standard",
+      "must_rewrite": true,
+      "expected_rewrite_contains": "研究评级",
+      "reason": "交易动作改写为研究评级"
+    },
+    {
+      "prompt": "什么时候买更合适",
+      "expected_depth": "standard",
+      "must_rewrite": true,
+      "expected_rewrite_contains": "验证窗口",
+      "reason": "买点改写为观察窗口"
+    },
+    {
+      "prompt": "仓位多少",
+      "expected_depth": "standard",
+      "must_rewrite": true,
+      "expected_rewrite_contains": "风险等级",
+      "reason": "仓位改写为风险暴露"
+    },
+    {
+      "prompt": "这几个里面哪个最值得看",
+      "expected_depth": "standard",
+      "must_rewrite": true,
+      "expected_rewrite_contains": "评分排序",
+      "reason": "排序问题保留为研究语言"
+    },
+    {
+      "prompt": "这条新闻利好谁",
+      "expected_depth": "light",
+      "expected_mode": "事件快评",
+      "must_rewrite": true,
+      "expected_rewrite_contains": "受益/受损链路",
+      "reason": "事件快评默认轻量"
+    },
+    {
+      "prompt": "财报出来了，原来的逻辑还成立吗",
+      "expected_depth": "light",
+      "expected_mode": "复盘验证",
+      "reason": "复盘验证默认不强制 PDF"
+    },
+    {
+      "prompt": "请做深度瓶颈研报并正式交付 PDF",
+      "expected_depth": "deep_pdf",
+      "expected_mode": "深度瓶颈研报",
+      "reason": "正式交付触发三件套"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "edges": [
+    {
+      "source": "AI 推理需求增长",
+      "target": "数据中心电力容量",
+      "relationship": "价值传导",
+      "evidence_level": "Corroborated",
+      "confidence": "medium",
+      "citation": "S01",
+      "status": "confirmed",
+      "bypass_risk": "medium",
+      "numbers": [
+        {
+          "metric": "新增负荷",
+          "value": "N/A",
+          "source": "S01",
+          "date": "2026-06-01",
+          "evidence_level": "交叉印证"
+        }
+      ]
+    },
+    {
+      "source": "数据中心电力容量",
+      "target": "变压器与配电设备",
+      "relationship": "供应",
+      "evidence_level": "Direct",
+      "confidence": "high",
+      "citation": "S02",
+      "status": "confirmed",
+      "bypass_risk": "low",
+      "numbers": [
+        {
+          "metric": "交付周期",
+          "value": "N/A",
+          "source": "S02",
+          "date": "2026-06-02",
+          "evidence_level": "直接证据"
+        }
+      ]
+    },
+    {
+      "source": "变压器与配电设备",
+      "target": "候选公司收入/订单",
+      "relationship": "财务传导",
+      "evidence_level": "Framework Inference",
+      "confidence": "medium",
+      "citation": "S03",
+      "status": "inferred",
+      "bypass_risk": "medium",
+      "numbers": [
+        {
+          "metric": "收入弹性",
+          "value": "N/A",
+          "source": "S03",
+          "date": "2026-06-03",
+          "evidence_level": "框架推演"
+        }
+      ]
+    }
+  ]
+}
