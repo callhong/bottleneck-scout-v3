@@ -15,7 +15,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install deps
-        run: pip install --quiet pypdf reportlab markdown
+        run: pip install --quiet pypdf reportlab markdown requests
 
       - name: Validate skill structure
         run: python3 scripts/validate_skill.py . --skip-git
