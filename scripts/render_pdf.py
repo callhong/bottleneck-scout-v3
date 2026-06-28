@@ -154,6 +154,9 @@ CJK_RE = r"[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]"
 VISUAL_SPACE = "\u2009"
 LINE_BREAK_MARKER = "\uE000"
 STOCK_CODE_PATTERN = r"(?:\d{6}\.(?:SH|SZ|BJ)|\d{4}\.HK|[A-Z]{1,6}\.(?:US|AX))"
+HTML_BREAK_RE = re.compile(r"<br\b[^>]*/?>", re.I)
+HTML_BLOCK_CLOSE_RE = re.compile(r"</(?:p|div)>", re.I)
+HTML_TAG_RE = re.compile(r"</?(?:span|font|strong|b|em|i|u|a|sup|sub|small|p|div)\b[^>]*>", re.I)
 
 
 class TitleBand(Flowable):
@@ -520,7 +523,23 @@ def make_styles():
     return base
 
 
+def strip_inline_html(text: str) -> str:
+    """Remove raw inline HTML that Markdown allows but ReportLab prints literally.
+
+    The WeasyPrint path can render HTML spans. ReportLab parses only its own small
+    XML-like subset, so user-authored `<span style="color:red">偏多</span>` must be
+    normalized before escaping or it leaks into the PDF.
+    """
+    if "<" not in text or ">" not in text:
+        return html.unescape(text)
+    text = HTML_BREAK_RE.sub(LINE_BREAK_MARKER, text)
+    text = HTML_BLOCK_CLOSE_RE.sub(LINE_BREAK_MARKER, text)
+    text = HTML_TAG_RE.sub("", text)
+    return html.unescape(text)
+
+
 def inline_markdown(text: str) -> str:
+    text = strip_inline_html(text)
     text = normalize_report_spacing(text)
     escaped = html.escape(text)
     escaped = preserve_visual_spacing(escaped)
@@ -798,7 +817,7 @@ def is_table_line(line: str) -> bool:
 
 
 def split_table_row(line: str) -> list[str]:
-    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+    return [strip_inline_html(cell).strip() for cell in line.strip().strip("|").split("|")]
 
 
 def format_table_cell_text(cell: str, header_cell: str, *, is_header: bool = False) -> str:
@@ -1329,6 +1348,37 @@ def _looks_like_missing_system_lib(exc: Exception) -> bool:
                                 "cannot load library", "oserror"))
 
 
+def _weasyprint_hint(exc: Exception) -> str:
+    import platform
+
+    s = f"{type(exc).__name__}: {exc}".lower()
+    system = platform.system()
+    hints: list[str] = []
+    if "truetype" in s or "ttc" in s or "ttf" in s or "字体" in s:
+        hints.append(
+            "提示：新版 PDF 需要稳定可嵌入的中文 TTF/TTC 字体；可放到 "
+            "assets/fonts/cjk.ttf 或 assets/fonts/cjk.ttc。OTF/CFF 字体会被拒绝，"
+            "避免部分 PDF 预览器中文掉字。"
+        )
+    if _looks_like_missing_system_lib(exc) or "gtk" in s:
+        if system == "Windows":
+            hints.append(
+                "提示：Windows 上 WeasyPrint 需要 GTK3/Pango 运行库；未安装时会自动降级 "
+                "ReportLab。若一定要新版层级版式，请安装 GTK3 Runtime 或改用 WSL/Linux/macOS。"
+            )
+        elif system == "Darwin":
+            hints.append(
+                "提示：macOS 可运行 `brew install pango gdk-pixbuf libffi` 后再执行 "
+                "`python3 scripts/render_pdf.py --setup`。脚本会自动注入 Homebrew 动态库路径。"
+            )
+        else:
+            hints.append(
+                "提示：Linux 可安装 pango/gdk-pixbuf 系统库，例如 "
+                "`sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf-2.0-0`。"
+            )
+    return "\n".join(f"[render_pdf] {hint}" for hint in hints)
+
+
 def _install_system_pango() -> bool:
     """best-effort 安装 WeasyPrint 的系统库；成功发起安装返回 True。
 
@@ -1505,8 +1555,14 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             if args.backend == "weasyprint":
                 print(f"WeasyPrint 渲染失败: {exc}", file=sys.stderr)
+                hint = _weasyprint_hint(exc)
+                if hint:
+                    print(hint, file=sys.stderr)
                 return 1
             print(f"[render_pdf] WeasyPrint 不可用，回退 ReportLab：{exc}", file=sys.stderr)
+            hint = _weasyprint_hint(exc)
+            if hint:
+                print(hint, file=sys.stderr)
             _write_marker(False)
 
     markdown = _degrade_blocks_to_tables(markdown)

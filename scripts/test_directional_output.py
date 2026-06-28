@@ -131,6 +131,26 @@ class DirectionalOutputTests(unittest.TestCase):
         self.assertIn("#667085", rendered)
         self.assertIn("#B54708", rendered)
 
+    def test_inline_markdown_strips_raw_html_span_styles(self):
+        rendered = render_pdf.inline_markdown('<span style="color:red">偏多</span>')
+        self.assertIn("偏多", rendered)
+        self.assertIn("#B42318", rendered)
+        self.assertNotIn("span", rendered.lower())
+        self.assertNotIn("style", rendered.lower())
+
+    def test_table_row_strips_raw_html_before_reportlab_layout(self):
+        row = render_pdf.split_table_row(
+            '| 弹性关注 | <span style="color:orange">待验证偏多</span> |'
+        )
+        self.assertEqual(row, ["弹性关注", "待验证偏多"])
+
+    def test_inline_html_cleanup_does_not_strip_comparison_text(self):
+        self.assertEqual(render_pdf.strip_inline_html("A < B > C"), "A < B > C")
+        rendered = render_pdf.inline_markdown("A < B > C")
+        self.assertIn("&lt;", rendered)
+        self.assertIn("&gt;", rendered)
+        self.assertIn("B", rendered)
+
     def test_validate_report_detects_directional_and_target_price_fields(self):
         text = """
 ## 公司证据与财务传导

@@ -22,17 +22,30 @@
 本仓库已从 `a-stock-data` 复制并改写公开端点逻辑到 `scripts/data_sources/a_stock.py`，调用入口为：
 
 ```bash
-python3 scripts/fetch_a_stock_data.py 600519 --include quote,stock-info,announcements,reports,financials --output /tmp/600519_snapshot.json
+python3 scripts/fetch_a_stock_data.py 600519 --preset company --output /tmp/600519_snapshot.json
 ```
 
 默认策略：
 
+- 默认 `--preset company` 只抓公司事实和估值底座；`deep/leads/market` 必须按研究目的显式选择。
 - 显式抓取，不做全量扫描；`--include all` 只能在用户明确要求或研究确有必要时使用。
 - 不限制死：`fetch_a_stock_data.py` 是 A 股结构化数据入口，不替代浏览器、搜索引擎、交易所官网、公司 IR、监管网站、券商/行业研报网页或其它实时联网查询。
 - 需要“最新/今天/刚发布/原文/PDF/网页证据”时，仍按原来方式联网查询并优先引用一手来源。
 - 东方财富请求必须走节流 helper，串行请求，不做并发批量轰炸。
-- 每个 dataset 都必须带 `source`、`endpoint`、`retrieved`、`evidence_level`、`status` 和 `data`，用于写入报告数据源清单和 QA sidecar。
+- 每个 dataset 都必须带 `source`、`endpoint`、`retrieved`、`evidence_level`、`research_role`、`status` 和 `data`，用于写入报告数据源清单和 QA sidecar。
 - 抓取失败时记录 `status=unavailable` 或 `empty`，不得把缺失数据伪装成事实。
+- `research_role=thesis_leads/market_temperature` 的数据只能用于发现线索、解释市场关注或判断拥挤，不能进入首页核心结论。
+- 每次正式研究必须使用独立 run 目录和 `manifest.json`。本地 PDF/JSON 只有进入本轮 manifest 后才能引用；不得直接扫描历史下载目录当作本轮证据。
+- 研报 PDF 可按 `infoCode` 在 1 天内复用缓存，默认 cache TTL 为 `--pdf-cache-days 1`；复用时仍必须在本轮 manifest 写入 `reused_from_cache=true`、`sha256`、原始下载时间和本轮引用时间。超过 TTL 默认重新下载。
+
+常用 preset：
+
+| Preset | 用途 | 包含 |
+| --- | --- | --- |
+| `company` | 默认公司事实和估值底座 | `quote,stock-info,announcements,financials` |
+| `deep` | 深度研报主证据库存 | `company + reports,ths-eps-forecast,answered-irm` |
+| `leads` | 发现题材和新闻线索 | `stock-news,global-news,industry-reports,concepts,em-hot-concept,ths-hot-list` |
+| `market` | 判断交易温度和拥挤 | `hot-rank,limit-up pools,fund-flow,dragon-tiger,northbound` |
 
 已内置数据源：
 
@@ -42,7 +55,10 @@ python3 scripts/fetch_a_stock_data.py 600519 --include quote,stock-info,announce
 | `stock-info` | 东方财富 push2 | 行业、股本、市值、上市日期 | 和腾讯市值可做交叉检查 |
 | `reports` | 东方财富 reportapi | 个股研报列表和机构预测线索 | 研报观点不能替代公司公告 |
 | `industry-reports` | 东方财富 reportapi | 行业研报列表 | 行业码需先用全行业结果反查 |
-| `--download-report-pdfs` | 东方财富 PDF | 可选下载个股/行业研报 PDF | 默认不下载，避免带宽和历史产物堆积 |
+| `--download-report-pdfs` | 东方财富 PDF | 可选下载个股/行业研报 PDF | 写入本轮 run 目录和 manifest；1 天内可按 `infoCode` 复用缓存 |
+| `ths-eps-forecast` | 同花顺 | EPS 一致预期 | 估值输入，不能替代业绩披露 |
+| `answered-irm` | 巨潮互动易 | 公司已答复问答 | 可作公司口径；未答复问题不在此 dataset |
+| `irm` | 巨潮互动易 | 公司问答和未答复问题 | 每行看 `answered/row_evidence_level`；未答复只能作线索 |
 | `announcements` | 巨潮资讯 | 公告全文检索 | 优先用于直接证据 |
 | `financials` | 新浪财经 | 利润表/资产负债表/现金流量表 | 关键财务数要和年报/公告交叉验证 |
 | `concepts` | 东方财富 slist | 板块/概念归属 | 只能做题材定位，不直接证明瓶颈 |
@@ -61,6 +77,9 @@ python3 scripts/fetch_a_stock_data.py 600519 --include quote,stock-info,announce
 | `northbound` | 同花顺 | 沪深股通分钟流向 | 资金面背景 |
 | `stock-news` | 东方财富搜索 | 个股新闻 | 新闻线索，需更强来源核验 |
 | `global-news` | 东方财富快讯 | 7x24 快讯 | 事件线索，需原始来源核验 |
+| `em-hot-concept` | 东方财富 | 个股热门概念命中 | 市场归因，只能作线索 |
+| `em-hot-rank` / `ths-hot-list` | 东方财富/同花顺 | 人气和热榜 | 市场关注度，不是公司事实 |
+| `zt-pool` / `zb-pool` / `dt-pool` / `yzt-pool` / `ths-limit-up` | 东方财富/同花顺 | 涨跌停池与封板表现 | 交易温度和拥挤度，不证明瓶颈 |
 
 数据源错误模型：
 

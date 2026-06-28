@@ -441,9 +441,13 @@ _SAFE_CJK_FONT_FILES = [
     "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
     "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
     "/system/fonts/DroidSansFallback.ttf",
+    "/usr/share/fonts/**/*NotoSansCJK*.ttc",
     "/usr/share/fonts/**/*NotoSansSC*.ttf",
     "/usr/share/fonts/**/*NotoSansCJK*.ttf",
+    "/usr/share/fonts/**/*SourceHanSans*SC*.ttf",
     "/usr/local/share/fonts/**/*NotoSansSC*.ttf",
+    "/usr/local/share/fonts/**/*NotoSansCJK*.ttc",
+    "/usr/local/share/fonts/**/*SourceHanSans*SC*.ttf",
 ]
 
 

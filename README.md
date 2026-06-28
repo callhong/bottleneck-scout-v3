@@ -3,62 +3,196 @@
 [![CI](https://github.com/callhong/bottleneck-scout-v3/actions/workflows/ci.yml/badge.svg)](https://github.com/callhong/bottleneck-scout-v3/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-把市场叙事/政策/技术路线，拆成**可验证的价值传导链**，定位真正稀缺的**瓶颈节点**，再做证据闸门、评分分层、红队反证，产出**付费级中文研报**（Markdown + PDF + 交付 QA）。
+把市场叙事、政策变化、技术路线或单个公司，拆成**可验证的价值传导链**，找真正稀缺的**瓶颈节点**，再输出中文投研报告。
 
-> ⚠️ **它是研究工具，不是交易工具**：只给研究评级、证据强度、价格位置、验证窗口、失效条件，**不输出买入/卖出/仓位/止损**。所有产物标注「不构成投资建议」。
+它的核心不是堆数据，而是回答一句话：
 
----
+> 如果这个 thesis 成立，价值到底会通过哪条链路进入收入、利润、现金流或估值重分类？
+
+如果这个项目帮你少走一次低质量调研弯路，欢迎 Star；也欢迎提 Issue/PR，一起优化数据源、报告模板和真实案例流程。
+
+> 仅供研究学习，不构成投资建议。skill 只输出研究评级、证据强度、价格位置、验证窗口和失效条件，不输出买入/卖出/仓位/止损。
 
 ## 支持的 Agent
 
-标准结构 skill（`SKILL.md` 带 frontmatter），**与具体模型无关**：
+标准结构 skill（`SKILL.md` 带 frontmatter），与具体模型无关。
 
-| Agent | 状态 |
-| --- | --- |
-| **Codex** | ✅ 已验证 |
-| **Claude Code** | ✅ 已验证 |
-| **OpenCode** | 🧪 原生支持 skill，待实测 |
-| Cursor / WorkBuddy / trae / qoder | 🧪 理论支持，待实测 |
+| Agent / 工具 | 状态 | 用途 |
+| --- | --- | --- |
+| Codex | 已验证 | 主力执行、代码/脚本/报告交付 |
+| Claude Code | 已验证 | 主力执行、独立第二意见 |
+| Codex CLI / Claude CLI | 可选 | 交叉验证链路、候选公司和反方证据；不作为默认固定成本 |
+| OpenCode Go | 可选 | 三大国产模型发散/红队：DeepSeek、Qwen、MiniMax |
+| Cursor / WorkBuddy / trae / qoder | 理论支持，待实测 | 可读标准 skill 的 agent 可尝试使用 |
 
-> **Codex ↔ Claude Code 交叉引用（零额外密钥）**：同时装了两者时，skill 在一个里运行可自动调用**另一个**做独立第二意见，主流电脑开箱即用。详见下方 [多模型交叉验证](#多模型交叉验证可选)。
+默认单 agent 就能跑；只有深度研报、主题较宽或高风险事实较多时，才建议打开多模型或 CLI 交叉验证。
 
----
+## 实战记录
 
-## 思路：为什么可信
+5 个已验证样本均为正，展示口径最高 **+47%**。
 
-普通投研常常两头不靠——要么堆叙事没证据，要么给数据说不清谁真受益。本 skill 把流程固化成几条纪律：
+| 标的（代码） | 口径 | 比例 |
+| --- | --- | ---: |
+| 云南锗业（002428） | 区间涨幅 | **+47%** |
+| 欧陆通（300870） | 盈亏比例 | **+36%** |
+| 中国巨石（600176） | 盈亏比例 | +30% |
+| 华海诚科（688535） | 盈亏比例 | +6% |
+| 石英股份（603688） | 盈亏比例 | +4% |
 
-- **价值传导链优先**：先看价值走哪条链进收入/利润/估值，而不是直接对应某只票。
-- **瓶颈定位**：找真正稀缺、难替代、强绑定的节点——**名气大 ≠ 瓶颈**。
-- **证据闸门**：五级证据，**证据越弱评分上限越低**（框架推演封顶 64、待核验封顶 49），没核实的进不了首页。
-- **阶段位置**：赛道在周期哪一步 + 个股价格位置；**最佳窗口＝发酵早中＋证据转强＋价格未透支**。
-- **A 股优先**：默认主战场 A 股，其它作对照；不强行映射、不编造。
-- **合规边界**：把「能买吗/仓位多少」改写成研究语言，**不给交易指令**。
-- **多模型交叉验证（亮点）**：高风险事实自动让多家不同谱系的模型一起核验，**单个失败/额度用尽自动降级**——既降幻觉又不卡流程（详见下文）。
+<p align="center">
+  <img src="examples/cases/screenshots/IMG_5458.PNG" alt="欧陆通行情截图" width="230">
+  <br>
+  <sub>欧陆通截图：只展示比例口径，不展示金额；完整 2×3 图墙见 <a href="examples/track-record.md">track-record</a>。</sub>
+</p>
 
-> 方法论受白毛女神 [Serenity（@aleabitoreddit）](https://x.com/aleabitoreddit) 的瓶颈投研思路启发，并吸收了网络与 GitHub 上若干开源投研项目的工程纪律，再按本项目目标做了收敛与优化。
+云南锗业按区间涨幅展示；其它标的均为本人实际持仓盈亏比例（截至约 2026-06），只展示比例，不展示金额。同期报告还点出多只未买入的标的。仅为方法演示，不构成投资建议；过往不预示未来。
 
-## 产出
+## 适合什么
 
-正式深度研报 = **中文三件套**：
+- **主题瓶颈扫描**：AI、液冷、先进封装、出口管制、电子特气、小材料国产替代，谁才是真瓶颈。
+- **事件快评**：突发涨价、政策、禁运、财报、订单，对哪些环节利多/利空/中性。
+- **A 股映射**：默认优先找 A 股真实暴露，同时诚实列出港股/美股/全球赢家作对照。
+- **深度研报**：中文 Markdown + PDF + 交付 QA，首页先给结论，再给证据链和红队反证。
 
-- **Markdown**：首页即决策入口（`## 结论`），含评级分层、方向、阶段位置、证据等级、失效条件。
-- **PDF**：层级版式——决策 Hero、评级色块、**价值传导图**、**成本拆解图**（柱状看「钱被谁赚走」）。
-- **交付 QA**：交付状态、核心闸门、问题清单、数据源、PDF 检查。
+## 快速开始
+
+需要 Python 3.10+。
+
+```bash
+git clone https://github.com/callhong/bottleneck-scout-v3.git
+cd bottleneck-scout-v3
+python3 scripts/validate_skill.py . --skip-git
+```
+
+看到 `VALIDATE_SKILL_PASSED` 即表示结构校验通过。
+
+也可以把这句话丢给 Codex / Claude Code：
+
+```text
+请把 https://github.com/callhong/bottleneck-scout-v3 安装为本地 skill；
+自动 clone 到合适的 skills 目录或创建软链接，并运行
+python3 scripts/validate_skill.py . --skip-git 校验。
+```
+
+自然语言触发：
+
+```text
+$bottleneck-scout-v3 深度分析：高纯度二氧化碳涨价，是否构成 AI 供应链真实瓶颈？
+默认 A 股优先，找真实暴露标的；证据不足就剔除，不要硬凑。
+输出中文 Markdown/PDF/交付 QA。
+```
+
+## 一个案例看流程
+
+案例：**高纯度二氧化碳涨价，是否构成 AI 供应链真实瓶颈？A 股有没有真实暴露标的？**
+
+- 产物：[Markdown](examples/cases/案例_电子级CO2_AI半导体瓶颈深度研报_20260628.md) / [PDF](examples/cases/案例_电子级CO2_AI半导体瓶颈深度研报_20260628.pdf) / [交付 QA](examples/cases/案例_电子级CO2_AI半导体瓶颈交付QA_20260628.md)
+- 结论：**高纯/电子级 CO2 是真实半导体材料，但证据不足以证明它已经构成 AI 半导体供应链真实瓶颈；A 股暂无核心研究标的。** 凯美特气为 CO2 收入事件弹性，广钢气体/金宏气体/华特气体为电子级 CO2 观察，其它映射按证据不足降级或剔除。
+- 成本：全流程约 **26 分钟**；PDF 9 页；验证来源 13 个；结构化 JSON 26 份；PDF 主口径 15 份（官方公告/年报 8 份、券商研报 7 份）。模型工具未暴露 exact token，只记录 `max_tokens` 上限。
+
+| 阶段 | 做什么 | 数据 / token / 耗时 | 取舍 |
+| --- | --- | --- | --- |
+| 1. 定义问题 | 区分工业级、食品级、干冰、电子级/高纯 CO2 | 纳入总耗时 | 先拆变量，避免把普通 CO2 涨价误当半导体瓶颈 |
+| 2. 可选发散 | DeepSeek、Qwen、MiniMax、Claude CLI 提候选；Codex CLI 超时则跳过 | `max_tokens=3500/模型` | 只当待查清单，不直接进结论 |
+| 3. 价值链与取证 | 查 SEMI、Entegris、TSMC、媒体触发源、公司公告/年报 | 验证来源 13 个 | 一手披露优先；韩国涨价仍降级为媒体线索 |
+| 4. A 股候选 | 初筛并核验 8 家公司 | 纳入总耗时 | 无 CO2 单品收入、客户、订单证据就降级 |
+| 5. 结构化抓取 | 行情、公告、财务、研报、EPS、互动易、价格位置 | 26 份 JSON；脚本抓取约 0 模型 token | 用低 token 数据底座，减少整页网页塞上下文 |
+| 6. 红队与闸门 | 多模型攻击“不是核心瓶颈”的结论；跑 Demand / Transmission / Bottleneck / Elasticity | `max_tokens=2500/模型` | 证据不足则写“暂无核心研究”，不硬凑标的 |
+| 7. 交付 | Markdown、PDF、交付 QA、manifest | 全流程约 26 分钟 | PDF 与 QA 校验通过后再交付 |
+
+**A 股结构化抓取会抓什么**
+
+```bash
+python3 scripts/fetch_a_stock_data.py 688268 \
+  --preset deep \
+  --download-report-pdfs \
+  --pdf-limit 3 \
+  --artifact-root reports/runs \
+  --topic high_purity_co2_ai
+```
+
+| 数据 | 来源 | 用途 |
+| --- | --- | --- |
+| 行情/市值/估值 | 腾讯财经、东方财富 | 价格位置和估值底座 |
+| 公司资料/资金/热度 | 东方财富 | 公司快照、市场温度、拥挤度 |
+| 公告/互动易 | 巨潮资讯、互动易 | 公司一手披露和公开口径 |
+| 财务报表 | 新浪财经，关键数回公告核验 | 收入、利润、现金流底座 |
+| EPS/热榜/涨停原因 | 同花顺 | 估值输入或题材线索 |
+| 个股/行业研报 PDF | 东方财富研报 API | 线索和交叉验证，不能替代公告 |
+
+正式研究会写入独立 `reports/runs/<run_id>/manifest.json`。报告只能引用本轮 manifest 里的 JSON/PDF；其它会话旧研报不会被直接扫描复用。同一篇东方财富研报可按 `infoCode` 在 1 天内缓存复用，但仍会写入本轮 manifest 并标记 `reused_from_cache=true`。
+
+<details>
+<summary>展开：A 股结构化数据 preset</summary>
+
+| Preset | 什么时候用 | 包含 |
+| --- | --- | --- |
+| `company`（默认） | 公司事实和估值底座 | `quote, stock-info, announcements, financials` |
+| `deep` | 正式深度研报候选公司 | `company + reports, ths-eps-forecast, answered-irm` |
+| `leads` | 找题材线索和市场叙事 | 新闻、快讯、概念、热榜、行业研报 |
+| `market` | 看交易温度和拥挤度 | 资金流、龙虎榜、涨跌停池、热门股、北向资金 |
+
+`leads` 和 `market` 只能帮助发现线索或解释市场温度，不能单独进入首页核心结论。
+
+</details>
+
+## 输出长什么样
+
+正式深度研报默认交付三件套：
+
+- **Markdown**：第一个二级标题就是 `## 结论`，先给候选排序、证据等级、方向、阶段位置和失效条件。
+- **PDF**：把价值传导图、评分分层、红队反证和来源清单渲染成可读版式。
+- **交付 QA**：记录数据源、PDF 检查、未解决问题和证据降级原因。
 
 轻量场景（事件快评、复盘验证）只出短结论，不强制 PDF。
 
-## 案例
+## 方法纪律
 
-`examples/` 的主示例是 **AI 产业链全链路卡脖子深度研报**：
+- **价值传导链优先**：先看价值如何进入收入/利润/估值，而不是直接点股票。
+- **瓶颈定位**：找稀缺、难替代、扩产慢、认证强绑定的节点。
+- **证据闸门**：五级证据；框架推演封顶 64，待核验线索封顶 49。
+- **A 股优先但不硬凑**：真实暴露才进入核心；没有好标的就直接写没有。
+- **红队反证**：关键结论必须写失效条件和反方解释。
+- **合规边界**：不输出买卖、仓位、止损等交易指令。
+
+## 示例
+
+主示例：
 
 - [示例_AI产业链全链路卡脖子深度研报.md](examples/示例_AI产业链全链路卡脖子深度研报.md)
 - [示例_AI产业链全链路卡脖子深度研报.pdf](examples/示例_AI产业链全链路卡脖子深度研报.pdf)
 
-该样例覆盖 GPU/HBM、光互连、先进封装、PCB、液冷、电力、电子特气、前驱体、高纯系统、设备部件等链路，并使用多模型发散作为待验证线索。`examples/cases/` 仍保留几份真实事件/主题研报（覆铜板涨价、AI 电力、InP 出口管制、先进封装材料），用于展示不同任务形态。
+新增实测案例：
+
+- [案例_电子级CO2_AI半导体瓶颈深度研报_20260628.md](examples/cases/案例_电子级CO2_AI半导体瓶颈深度研报_20260628.md)
+- [案例_电子级CO2_AI半导体瓶颈深度研报_20260628.pdf](examples/cases/案例_电子级CO2_AI半导体瓶颈深度研报_20260628.pdf)
+- [案例_电子级CO2_AI半导体瓶颈交付QA_20260628.md](examples/cases/案例_电子级CO2_AI半导体瓶颈交付QA_20260628.md)
+
+`examples/cases/` 里还有覆铜板涨价、AI 电力、InP 出口管制、先进封装材料等案例。
 
 <details>
-<summary>用于生成主示例的原始提示词</summary>
+<summary>展开：可复制提示词</summary>
+
+```text
+$bottleneck-scout-v3 分析【主题/事件/公司】。默认 A 股优先，必要时列全球赢家对照。请先给赛道阶段、该看谁、各自价格位置；再拆价值传导链、真实瓶颈、证据等级、评分封顶、红队反证、失效条件。不要输出买卖/仓位建议；证据不足就降级，不硬凑核心推荐。
+```
+
+```text
+$bottleneck-scout-v3 做一份 AI 算力硬件瓶颈扫描：从 GPU/服务器需求出发，拆到 PCB、光模块、液冷、电源、功率半导体、先进封装、材料和设备。默认 A 股优先，找低估隐形冠军和小基数高弹性标的；如果没有核心推荐，直接说没有。首页先给结论和赛道阶段。
+```
+
+```text
+$bottleneck-scout-v3 深度分析：2025 年铟/InP 出口管制、2023 年镓锗管制，对 AI 光通信供应链的真实瓶颈在哪里？默认找 A 股可投标的，区分 InP 衬底、镓锗资源、光芯片、电子特气、泛材料概念。给赛道阶段、A 股候选排序、全球赢家对照、证据等级、评分封顶、价格位置、失效条件，并生成正式中文 Markdown/PDF/交付 QA。
+```
+
+```text
+$bottleneck-scout-v3 复盘验证：前面关于存储涨价、HBM、DDR/NAND、模组和控制芯片的 thesis 现在是否还成立？比较兆易创新、澜起科技、佰维存储、江波龙、普冉股份、聚辰股份等，按“价格上涨能否进入收入/利润/估值重分类”排序。默认不生成 PDF，输出一次性复盘快照和下一验证窗口。
+```
+
+</details>
+
+<details>
+<summary>展开：主示例原始提示词</summary>
 
 ```text
 重新从零做一份《AI 产业链全链路卡脖子深度研报》。不要沿用旧报告、旧 PDF、旧候选排序或旧结论。
@@ -80,198 +214,81 @@
 
 </details>
 
-典型用法：**主题瓶颈扫描**（谁最卡）、**事件快评**（利好谁）、**复盘验证**（逻辑还成立吗）、**候选初筛**（先看哪些 A 股）。
+## 多模型与 OpenCode Go（可选）
 
-### 📈 实战一瞥
-
-5 个已验证样本均为正，展示口径最高 **+47%**。
-
-| 标的（代码） | 口径 | 比例 |
-| --- | --- | ---: |
-| 云南锗业（002428） | 区间涨幅 | **+47%** |
-| 欧陆通（300870） | 盈亏比例 | **+36%** |
-| 中国巨石（600176） | 盈亏比例 | +30% |
-| 华海诚科（688535） | 盈亏比例 | +6% |
-| 石英股份（603688） | 盈亏比例 | +4% |
-
-<p align="center">
-  <img src="examples/cases/screenshots/IMG_5458.PNG" alt="欧陆通行情截图" width="230">
-  <br>
-  <sub>欧陆通截图：只展示比例口径，不展示金额；完整 2×3 图墙见 <a href="examples/track-record.md">track-record</a>。</sub>
-</p>
-
-> 云南锗业按区间涨幅展示；其它标的均为本人实际持仓盈亏比例（截至约 2026-06），只展示比例，不展示金额。同期报告还点出多只未买入的标的。**仅为方法演示，不构成投资建议；过往不预示未来。**
-
-## 快速开始
-
-需要 Python 3.10+。
-
-```bash
-git clone https://github.com/callhong/bottleneck-scout-v3.git
-cd bottleneck-scout-v3
-python3 scripts/validate_skill.py . --skip-git
-```
-
-看到 `VALIDATE_SKILL_PASSED` 即表示结构校验通过。
-
-也可以直接把这句话丢给 Codex / Claude Code，让 AI 处理安装和校验：
-
-> 请把 `https://github.com/callhong/bottleneck-scout-v3` 安装为本地 skill；自动 clone 到合适的 skills 目录或创建软链接，运行 `python3 scripts/validate_skill.py . --skip-git` 校验，缺依赖请自行安装或修复。
-
-**依赖全自动，无需手动管**：首次渲染 PDF 时自动 pip 装依赖、尝试装系统库，装不上自动降级到纯 pip 的 ReportLab。把本目录作为 skill 安装后，用自然语言触发即可：
-
-> 用瓶颈侦察重新研究「AI 产业链全链路卡脖子」，先做多模型发散和全链路扫描，再收敛到最值得深挖的细分瓶颈，给正式 Markdown/PDF/交付 QA。
-
-## 使用示例
-
-通用短模板：
-
-```text
-$bottleneck-scout-v3 分析【主题/事件/公司】。默认 A 股优先，必要时列全球赢家对照。请先给赛道阶段、该看谁、各自价格位置；再拆价值传导链、真实瓶颈、证据等级、评分封顶、红队反证、失效条件。不要输出买卖/仓位建议；证据不足就降级，不硬凑核心推荐。
-```
-
-可直接复制的任务示例：
-
-1. **InP / 镓锗出口管制**
-
-```text
-$bottleneck-scout-v3 深度分析：2025 年铟/InP 出口管制、2023 年镓锗管制，对 AI 光通信供应链的真实瓶颈在哪里？默认找 A 股可投标的，区分 InP 衬底、镓锗资源、光芯片、电子特气、泛材料概念。给赛道阶段、A 股候选排序、全球赢家对照、证据等级、评分封顶、价格位置、失效条件，并生成正式中文 Markdown/PDF/交付QA。
-```
-
-2. **InP 窄瓶颈目标价框架**
-
-```text
-$bottleneck-scout-v3 以“六氟化钨式小品种瓶颈”为参照，分析 InP 衬底、铟前驱体和出口许可是否构成 A 股窄瓶颈机会。比较云南锗业、博杰股份、宿迁联盛、中铝/驰宏等资源平台。不要给买卖建议，输出研究观察带、目标价依据、摊薄情景、证据等级和证伪条件。
-```
-
-3. **AI 算力硬件瓶颈扫描**
-
-```text
-$bottleneck-scout-v3 做一份 AI 算力硬件瓶颈扫描：从 GPU/服务器需求出发，拆到 PCB、光模块、液冷、电源、功率半导体、先进封装、材料和设备。默认 A 股优先，找低估隐形冠军和小基数高弹性标的；如果没有核心推荐，直接说没有。首页先给结论和赛道阶段。
-```
-
-4. **800V / 功率半导体 / SiC**
-
-```text
-$bottleneck-scout-v3 深度研报：800V 高压平台、AI 数据中心电源、储能和新能源汽车，对功率半导体、SiC、IGBT、模块封装的价值传导链是什么？A 股哪些公司是真实瓶颈，哪些只是概念映射？拆成本、利润池、认证周期、客户绑定，给评分、证据封顶、价格位置和红队。
-```
-
-5. **液冷板块阶段判断**
-
-```text
-$bottleneck-scout-v3 分析 A 股液冷板块现在处于萌芽、发酵、加速、验证还是兑现退潮阶段。区分冷板、CDU、管路、快接头、泵阀、机柜集成、数据中心总包等环节，找真实收入暴露和高弹性公司。先给事件快评式轻量结论；证据足够再升级正式深度研报。
-```
-
-6. **Intel 先进封装材料映射**
-
-```text
-$bottleneck-scout-v3 深度分析 Intel 先进封装、玻璃基板、ABF/BT 载板、封装材料、陶瓷/硅基材料对 A 股的映射。先判断这是真实 A 股瓶颈机会，还是海外产业链事件；区分直接暴露、间接映射、概念相关。输出 A 股候选排序、全球对照、证据等级、最大反证。
-```
-
-7. **存储链复盘**
-
-```text
-$bottleneck-scout-v3 复盘验证：前面关于存储涨价、HBM、DDR/NAND、模组和控制芯片的 thesis 现在是否还成立？比较兆易创新、澜起科技、佰维存储、江波龙、普冉股份、聚辰股份等，按“价格上涨能否进入收入/利润/估值重分类”排序。默认不生成 PDF，输出一次性复盘快照和下一验证窗口。
-```
-
-8. **单公司深度挑战**
-
-```text
-$bottleneck-scout-v3 单公司深度挑战：澜起科技 688008 到底是 AI 服务器内存接口瓶颈股，还是已经被市场充分定价？验证 DDR5/RCD/MRCD/CKD、PCIe Retimer、AI 服务器客户、财务弹性、估值位置。给 directional_bias、research_rating、expected_price_reaction、invalidation_condition 和目标价框架，证据不足处写 N/A。
-```
-
-9. **具身智能 / 世界模型**
-
-```text
-$bottleneck-scout-v3 主题瓶颈扫描：具身智能和世界模型如果成立，价值会先进入哪些环节？机器人本体、传感器、执行器、数据、仿真、控制器、模型训练、工业场景落地，哪个才是 A 股可捕获瓶颈？避免泛 AI 概念，输出候选公司剔除理由和下一步验证清单。
-```
-
-10. **资源与商品事件快评**
-
-```text
-$bottleneck-scout-v3 事件快评：几内亚政治/矿业事件对黄金、铝土矿、氧化铝、电解铝和 A 股相关公司分别是利多、利空、中性还是双向？先通过事件方向闸门，判断核心价格变量，再给中国铝业、云铝股份、神火股份、紫金矿业等受益/受损链路和最大反证。轻量输出，不默认 PDF。
-```
-
-11. **单公司事件估值复盘**
-
-```text
-$bottleneck-scout-v3 单公司复盘验证：分析北大荒/海南橡胶这类公司，核心不是主题炒作，而是土地承包费、天然橡胶价格、保险赔付、税务事项、分红和现金流。请把“什么时候买/仓位多少”改写成研究观察区间、风险预算、验证窗口和失效条件，不输出交易指令。
-```
-
-12. **小材料国产替代**
-
-```text
-$bottleneck-scout-v3 深度分析一个小材料国产替代主题：电子级红磷/高端锡膏是否是真瓶颈？从下游 AI 光模块、InP、先进封装、PCB/SiP 需求开始，拆到材料纯度、客户认证、成本占比、利润池和 A 股标的。判断它是价格弹性瓶颈、工艺安全瓶颈，还是没有上市公司承接的伪主题。
-```
-
-## PDF 渲染
-
-- 默认 **WeasyPrint 层级版式**（Hero、色块、传导图、成本拆解图）。
-- **字体策略**：优先使用稳定可嵌入的 TrueType/TTC CJK 字体，并用受限 fontconfig 让 WeasyPrint 只能看到选中的字体，避免粗体或缺字时回退到 PingFang/Hiragino 等系统字体。
-- **OTF/CFF 不作为默认交付字体**：Noto/思源 OTF/CFF 在文本提取上可能正常，但不同 PDF 预览器里可能出现中文掉字；校验器会把 CFF 嵌入、旧作者和页面缺字作为失败信号。
-- **macOS 全自动**：首次渲染 `brew install pango` 并自动配置动态库路径（带 `DYLD_FALLBACK_LIBRARY_PATH` 重启一次自己），无需手动设置。
-- **跨平台兜底**：macOS 可用 Arial Unicode；Windows 优先微软雅黑/宋体/黑体；Linux 优先 Noto/WenQuanYi/Droid。缺 WeasyPrint 系统依赖或找不到安全字体时自动降级 ReportLab，图块降级成表格、不渲成裸代码。
-- **交付前必须跑 QA**：`validate_pdf_layout.py` 会生成 PNG 页面预览，并检查作者、字体、股票代码断行、粘连、缺字方块和内部字段；不能只看 PDF 文件存在。
-- `--setup` 强制重跑安装；`BOTTLENECK_NO_AUTOINSTALL=1` 关闭自动安装。
-
-## 多模型交叉验证（可选）
-
-遇到高风险离散事实（份额、产能、客户占比、认证、涨价幅度），**skill 会在高风险闸门自动调用多模型核验，你通常不用手动跑命令**。它**不投票**，只并列分歧、按证据强度裁决。
-
-**默认尽量都用上、并自动降级**：配了 OpenCode 密钥就用那几个模型，装了 Codex/Claude 就自动叠加做第二意见；**任一模型调用失败或订阅额度用尽，会自动跳过，不影响其余结果**。
-
-三种模式（一般由 skill 自动驱动，也可手动）：
-
-发散：候选瓶颈 + 待验证清单
+默认单 agent 就能完成研究。遇到宽主题、关键事实冲突、候选标的很多时，可以打开多模型发散/红队；它只提供候选和反证，最终仍按公开证据裁决。
 
 ```bash
 python3 scripts/cross_verify.py --diverge "AI 服务器电源谁最卡"
-```
-
-红队：找反证与必须核验的事实
-
-```bash
 python3 scripts/cross_verify.py --redteam "公司X份额≥90%"
-```
-
-接地：只读给定原文判断
-
-```bash
 python3 scripts/cross_verify.py --evidence snapshot.txt "某结论"
 ```
 
-配置（唯一手动步骤）：
+三大国产模型默认是 `deepseek-v4-pro`、`qwen3.7-max`、`minimax-m3`；Codex CLI / Claude CLI 可作为独立第二意见。任一模型失败、超时或额度不足，都只降级该路结果，不阻塞主流程。
+
+为什么推荐 OpenCode Go：做多模型核验要的是**谱系多样 + 量大管够 + 成本低**。官方当前标价为首月 **$5**、之后 **$10/月**，并提供较宽松的使用额度；模型池覆盖 DeepSeek、Qwen、MiniMax、Kimi、GLM、MiMo 等开源/国产模型，适合用来做候选发散、红队反证和第二意见。价格、模型和额度以官方页面实时展示为准。
+
+OpenCode Go 配置：
 
 ```bash
 cp config/opencode.env.example config/opencode.env
 ```
 
-然后打开 `config/opencode.env`，把占位符替换成你的 OpenCode Go 密钥。
+参考文档：<https://opencode.ai/docs/zh-cn/go/>。邀请链接：<https://opencode.ai/go?ref=SS2P5BQPM7>，通过邀请链接订阅通常你我各得 **$5 额度**（以页面实际展示为准）；不用也完全不影响本 skill。
 
-默认核验三家不同实验室的模型：**`deepseek-v4-pro`、`qwen3.7-max`、`minimax-m3`**（可改 `scripts/cross_verify.py` 顶部 `MODELS` 表换 Kimi/GLM/MiMo）。
+## PDF 渲染
 
-**为什么推荐 [OpenCode Go](https://opencode.ai/docs/zh-cn/go/)**：做多模型核验要的就是「**谱系多样 + 量大管够**」。它一个订阅、一个密钥就能用上 **DeepSeek / Qwen / Kimi / GLM / MiniMax / MiMo** 多家开源模型，价格便宜（首月 $5、之后 $10/月），额度按美元计、便宜模型请求数很多。
-
-> 如果这个 skill 帮到你，也欢迎用我的邀请链接订阅：<https://opencode.ai/go?ref=SS2P5BQPM7> —— 你我各得 $5 额度。纯属随缘，不用也完全不影响使用。
+- 默认 WeasyPrint 层级版式；系统依赖缺失时自动降级 ReportLab。
+- 交付前运行 `scripts/validate_pdf_layout.py`，检查字体、粘连、股票代码断行、缺字和内部字段。
+- `BOTTLENECK_NO_AUTOINSTALL=1` 可关闭自动安装。
 
 ## 目录结构
 
+```text
+SKILL.md                  主入口与硬规则
+README.md                 项目说明与使用入口
+NOTICE / LICENSE          开源许可与第三方说明
+.github/workflows/        CI
+.githooks/                提交前安全检查
+agents/                   agent 配置示例
+assets/fonts/             PDF 渲染字体资源
+config/                   多模型密钥占位，真实密钥本地填
+examples/                 示例研报与 track record
+examples/cases/           真实案例 Markdown/PDF 与截图
+licenses/                 第三方许可证
+references/               方法论：路由、价值链、证据闸门、红队、模板
+reports/runs/             本地研究 run、manifest 与 PDF 缓存
+scripts/                  渲染、校验、价格位置、交叉验证、抓取入口
+scripts/data_sources/     A 股结构化公开数据源
+tests/fixtures/           测试夹具
 ```
-SKILL.md              主入口与硬规则
-references/           方法论：路由 / 价值链 / 证据闸门 / 瓶颈门 / 红队 / 报告模板…
-scripts/              引擎：渲染 / 校验 / A股数据 / 价格位置 / 交叉验证…
-config/               多模型密钥占位（真实密钥本地填，永不入库）
-examples/  tests/     示例研报 / 测试夹具
+
+## 贡献
+
+欢迎提 Issue/PR，尤其欢迎这些方向：
+
+- 修复失效数据源或补充更好的公开数据源。
+- 优化报告模板、PDF 版式、QA 检查和证据闸门。
+- 增加真实案例复盘，尤其是“证据不足所以剔除”的反例。
+- 改进 A 股映射、港美股对照、行业数据和 PDF 解析流程。
+
+提交前建议先跑：
+
+```bash
+python3 scripts/validate_skill.py . --skip-git
+python3 scripts/test_a_stock_data.py
 ```
 
 ## 安全与隐私
 
-- **API 密钥永不进仓库**：只发 `.example`，真实密钥已 gitignore。
-- 自带提交防护钩子：`git config core.hooksPath .githooks`（提交前扫疑似密钥）。
+- API 密钥永不进仓库：只发 `.example`，真实密钥已 gitignore。
+- 自带提交防护钩子：`git config core.hooksPath .githooks`。
 - 个人研究产物（`reports/`）、本地配置不入库。
 
 ## 许可 · 致谢 · 免责
 
-**Apache-2.0**（见 `LICENSE`）。整合了 Apache-2.0 的 [a-stock-data](https://github.com/simonlin1212/a-stock-data) 公开数据端点（见 `NOTICE`），并参考若干开源投研项目的工程纪律（只吸收方法，不吸收语料/人设/交易动作）。
+Apache-2.0（见 `LICENSE`）。整合了 Apache-2.0 的 [a-stock-data](https://github.com/simonlin1212/a-stock-data) 公开数据端点（见 `NOTICE`），并参考若干开源投研项目的工程纪律，只吸收方法，不吸收语料、人设或交易动作。
 
-> **免责声明**：仅供研究学习，**不构成任何投资建议**；涉及的公司/标的/数字仅为方法演示。投资有风险，决策自负盈亏。
+再次感谢 Serenity（[@aleabitoreddit](https://x.com/aleabitoreddit)）的瓶颈投研启发，也感谢所有愿意提交数据源修复、案例复盘和模板优化的人。
+
+免责声明：仅供研究学习，不构成任何投资建议；涉及的公司、标的和数字仅为方法演示。投资有风险，决策自负盈亏。

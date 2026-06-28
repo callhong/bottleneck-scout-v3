@@ -55,6 +55,9 @@ FORBIDDEN_LITERAL = [
     "target_time_horizon",
     "target_price_basis",
     "price_position.py",
+    "<span",
+    "</span",
+    "style=",
     ".py",
 ]
 
