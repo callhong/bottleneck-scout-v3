@@ -6,7 +6,8 @@
 - 首页"决策 Hero"：`## 结论` 区视觉权重最高（底色块 + 大标题 + 强色表头）。
 - 评级/方向用色块 badge，让答案一眼可见。
 - 来源清单/数据源/交付QA/跟踪清单等降为"参考资料"小字层级。
-- 经 fontconfig 直接用系统 Noto / Source Han CJK，告别 STSong 细衬线。
+- 只接受稳定 TrueType/TTC CJK 字体；OTF/CFF 曾导致 PDF 预览中文掉字，交给
+  ReportLab 兜底，不在 WeasyPrint 默认路径冒险。
 
 仅依赖 weasyprint 与 markdown。作为 render_pdf.py 的默认后端，失败时回退 ReportLab。
 """
@@ -19,6 +20,7 @@ from pathlib import Path
 import markdown as _md
 
 BRAND = "#9F1D20"
+AUTHOR = "瓶颈侦察 v3"
 CJK = "㐀-䶿一-鿿豈-﫿"
 VISUAL = " "  # 细空格：中英混排的标准间隔，也让文本提取不粘连（与 ReportLab 一致）
 
@@ -66,7 +68,7 @@ CSS = f"""
 }}
 * {{ box-sizing: border-box; }}
 body {{
-  font-family: "Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-family: "BSCJK","WenQuanYi Zen Hei","Droid Sans Fallback","Microsoft YaHei",sans-serif;
   font-size: 10pt; color: #1c1c1c; line-height: 1.55;
 }}
 h1 {{ font-size: 18pt; color: {BRAND}; margin: 0 0 3pt; line-height: 1.2; }}
@@ -108,11 +110,11 @@ section.hero th {{ background: {BRAND}; color: #fff; border-color: {BRAND}; }}
 .dir-short {{ color: #1E8449; }}
 .dir-neutral {{ color: #777; }}
 .dir-pending {{ color: #D98A2B; }}
-code {{ font-family: "DejaVu Sans Mono", monospace; font-size: 8.2pt; }}
+code {{ font-family: "DejaVu Sans Mono", "BSCJK", monospace; font-size: 8.2pt; }}
 pre {{ background: #f4f4f4; color: #555; padding: 5pt 6pt; border-radius: 3pt;
        border-left: 2pt solid #ccc; white-space: pre-wrap;
        overflow-wrap: anywhere; word-break: break-all; font-size: 7.4pt;
-       line-height: 1.35; }}
+       line-height: 1.35; font-family: "DejaVu Sans Mono", "BSCJK", monospace; }}
 blockquote {{ margin: 5pt 0; padding: 4pt 9pt; border-left: 3pt solid {BRAND};
               background: #FBF3F3; font-weight: 600; }}
 .chainwrap {{ margin: 9pt 0; text-align: center; }}
@@ -158,6 +160,7 @@ def _split_cover(markdown_text: str) -> tuple[str, str, str]:
     body = markdown_text[m.start():] if m else ""
     title = ""
     meta_lines: list[str] = []
+    author_seen = False
     for line in head.splitlines():
         s = line.strip()
         if not s:
@@ -165,7 +168,12 @@ def _split_cover(markdown_text: str) -> tuple[str, str, str]:
         if s.startswith("# ") and not title:
             title = s[2:].strip()
         elif not s.startswith("#"):
+            if re.match(r"作者\s*[:：]", s):
+                s = f"作者：{AUTHOR}"
+                author_seen = True
             meta_lines.append(s)
+    if title and not author_seen:
+        meta_lines.insert(0, f"作者：{AUTHOR}")
     cover = [f"<header class='cover'><h1>{_html.escape(title)}</h1>"]
     for ln in meta_lines:
         cover.append(f"<p class='meta'>{_html.escape(ln)}</p>")
@@ -405,22 +413,224 @@ def build_html(markdown_text: str, title: str) -> str:
     body_html = _wrap_sections(body_html)
     body_html = _colorize_cells(body_html)
     content = _space_text_nodes(cover_html + body_html)
+    font_face = _font_face_css(_safe_cjk_font_file())  # 指向安全的 TrueType CJK 字体
     return (
         "<!DOCTYPE html><html lang='zh-CN'><head><meta charset='utf-8'>"
         f"<title>{_html.escape(page_title)}</title>"
-        "<meta name='author' content='瓶颈侦察 v3'>"
-        "<meta name='description' content='瓶颈侦察 v3 研究分析，不构成投资建议'>"
-        f"<style>{CSS}</style></head><body>{content}</body></html>"
+        f"<meta name='author' content='{AUTHOR}'>"
+        f"<meta name='description' content='{AUTHOR} 研究分析，不构成投资建议'>"
+        f"<style>{font_face}{CSS}</style></head><body>{content}</body></html>"
     )
 
 
-def render(markdown_text: str, output: Path, title: str = "") -> int:
-    from weasyprint import HTML  # 延迟导入，便于上层在缺依赖时回退
+# 真正会让 PDF 预览乱码/掉字的是「被嵌入的 macOS 系统字体」
+#（PingFang/Hiragino 等）以及 OTF/CFF CJK 字体。后者文本提取常常正常，
+# 但 Apple Preview/Poppler 视觉渲染可能大量缺中文字形，所以默认禁用。
+_UNSAFE_FONT_HINTS = ("pingfang", "hiragino", "songti", "stheiti", "stkaiti", "applesd")
 
+# 只列稳定 TrueType/TTC 候选；不要把 Noto/SourceHan 的 OTF/CFF 版放进默认路径。
+_SAFE_CJK_FONT_FILES = [
+    "/Library/Fonts/Arial Unicode.ttf",
+    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+    "C:/Windows/Fonts/msyh.ttc",
+    "C:/Windows/Fonts/msyh.ttf",
+    "C:/Windows/Fonts/msjh.ttc",
+    "C:/Windows/Fonts/simsun.ttc",
+    "C:/Windows/Fonts/simsun.ttf",
+    "C:/Windows/Fonts/simhei.ttf",
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+    "/system/fonts/DroidSansFallback.ttf",
+    "/usr/share/fonts/**/*NotoSansSC*.ttf",
+    "/usr/share/fonts/**/*NotoSansCJK*.ttf",
+    "/usr/local/share/fonts/**/*NotoSansSC*.ttf",
+]
+
+
+def _font_has_truetype_outlines(path: str) -> bool:
+    """Return True only for fonts with glyf outlines; reject OTF/CFF even if CJK glyphs exist."""
+    suffix = Path(path).suffix.lower()
+    if suffix == ".otf":
+        return False
+    try:
+        from fontTools.ttLib import TTCollection, TTFont
+        if suffix == ".ttc":
+            coll = TTCollection(path)
+            return any("glyf" in font and "CFF " not in font and "CFF2" not in font for font in coll.fonts)
+        font = TTFont(path)
+        return "glyf" in font and "CFF " not in font and "CFF2" not in font
+    except Exception:
+        # Without fontTools, stay conservative: TTF is generally glyf; TTC is accepted for
+        # Windows/Linux CJK fonts listed above, but OTF is never accepted.
+        return suffix in {".ttf", ".ttc"}
+
+
+def _safe_cjk_font_file() -> str:
+    """返回第一个覆盖完整、Preview 安全（非系统、非 CFF）的 CJK 字体文件；找不到返回空串。
+
+    优先用仓库自带 TrueType/TTC 字体（assets/fonts/cjk.{ttf,ttc}），保证跨机器确定。
+    """
+    import glob
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    fdir = os.path.join(os.path.dirname(here), "assets", "fonts")
+    bundled = (sorted(glob.glob(os.path.join(fdir, "cjk.ttf")))
+               + sorted(glob.glob(os.path.join(fdir, "cjk.ttc"))))
+    user_fonts = [
+        os.path.expanduser("~/Library/Fonts/NotoSansSC-Regular.ttf"),
+        os.path.expanduser("~/Library/Fonts/NotoSansCJKsc-Regular.ttf"),
+    ]
+    for path in bundled + user_fonts + _SAFE_CJK_FONT_FILES:
+        candidates = sorted(glob.glob(path, recursive=True)) if any(ch in path for ch in "*?[") else [path]
+        for candidate in candidates:
+            if candidate and os.path.exists(candidate) and _font_has_truetype_outlines(candidate):
+                return candidate
+    return ""
+
+
+def _font_face_css(font_file: str) -> str:
+    if not font_file:
+        return ""
+    uri = Path(font_file).as_uri()
+    # 正常 + 粗体都指向同一个安全 TrueType 文件，避免粗体回退到系统 Noto 等 CFF 字体。
+    return (
+        f"@font-face{{font-family:'BSCJK';font-weight:normal;src:url('{uri}');}}"
+        f"@font-face{{font-family:'BSCJK';font-weight:bold;src:url('{uri}');}}"
+    )
+
+
+def _embedded_font_problems(pdf_path: Path) -> list[str]:
+    """检查 PDF 嵌入的字体是否对 Apple Preview 不安全：CFF(CIDFontType0) 或 macOS 系统字体。"""
+    from pypdf import PdfReader
+
+    problems: set[str] = set()
+    try:
+        reader = PdfReader(str(pdf_path))
+        for page in reader.pages:
+            res = page.get("/Resources")
+            fonts = res.get("/Font") if res else None
+            if not fonts:
+                continue
+            for ref in fonts.values():
+                try:
+                    obj = ref.get_object()
+                except Exception:
+                    continue
+                faces = [obj]
+                desc = obj.get("/DescendantFonts")
+                if desc:
+                    for d in desc:
+                        try:
+                            faces.append(d.get_object())
+                        except Exception:
+                            pass
+                for fnt in faces:
+                    base = str(fnt.get("/BaseFont", "")).lower()
+                    embedded = False
+                    cff_embedded = False
+                    fd = fnt.get("/FontDescriptor")
+                    if fd is not None:
+                        try:
+                            fdo = fd.get_object()
+                            embedded = any(k in fdo for k in ("/FontFile", "/FontFile2", "/FontFile3"))
+                            cff_embedded = "/FontFile3" in fdo
+                        except Exception:
+                            embedded = False
+                            cff_embedded = False
+                    if embedded and cff_embedded:
+                        problems.add(f"嵌入 OTF/CFF 字体(预览易掉字):{base[:40]}")
+                    if embedded:
+                        for hint in _UNSAFE_FONT_HINTS:
+                            if hint in base:
+                                problems.add(f"嵌入系统字体(Preview易乱码):{base[:40]}")
+    except Exception:
+        return []
+    return sorted(problems)
+
+
+_ISOLATED_FONT_DIR = None
+
+
+def _isolated_font_dir(font_file: str) -> str:
+    """把选中的字体复制到一个独立临时目录，确保受限 fontconfig 只看到这一个字体
+    （避免同目录其它字体文件——如 .ttc 集合里的 JP face——被误用）。"""
+    global _ISOLATED_FONT_DIR
+    if _ISOLATED_FONT_DIR is None:
+        import os
+        import shutil
+        import tempfile
+        d = tempfile.mkdtemp(prefix="bs-font-")
+        shutil.copy(font_file, os.path.join(d, os.path.basename(font_file)))
+        _ISOLATED_FONT_DIR = d
+    return _ISOLATED_FONT_DIR
+
+
+def _restricted_fontconfig(font_dir: str) -> str:
+    """写一个只含指定字体目录的 fontconfig，禁止 WeasyPrint 回退到系统字体（如 PingFang）。"""
+    import os
+    import tempfile
+    cache = os.path.join(tempfile.gettempdir(), "bs-fc-cache")
+    conf = os.path.join(tempfile.gettempdir(), "bs-fonts.conf")
+    with open(conf, "w", encoding="utf-8") as fh:
+        fh.write(
+            '<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd">'
+            f"<fontconfig><dir>{font_dir}</dir><cachedir>{cache}</cachedir>"
+            "<config></config></fontconfig>"
+        )
+    return conf
+
+
+def render(markdown_text: str, output: Path, title: str = "") -> int:
+    import os
+    import tempfile
+
+    font_file = _safe_cjk_font_file()
+    if not font_file:
+        raise RuntimeError("WeasyPrint 未找到稳定 TrueType/TTC CJK 字体，回退 ReportLab")
     full_html = build_html(markdown_text, title)
-    document = HTML(string=full_html).render()
-    pages = len(document.pages)
-    document.write_pdf(str(output))
+
+    # 对所有选中的安全字体启用受限 fontconfig：WeasyPrint 只能看到这一枚
+    # TrueType/TTC 字体，避免粗体/标点/缺字时偷偷回退到 Hiragino/PingFang
+    # 等 OTF/CFF 或 macOS 系统 CJK 字体。
+    use_restricted = bool(font_file)
+    prev_fc = os.environ.get("FONTCONFIG_FILE")
+    if use_restricted:
+        os.environ["FONTCONFIG_FILE"] = _restricted_fontconfig(_isolated_font_dir(font_file))
+    tmp_path: Path | None = None
+    try:
+        from weasyprint import HTML  # 延迟导入，便于上层在缺依赖时回退
+        document = HTML(string=full_html).render()
+        pages = len(document.pages)
+        with tempfile.NamedTemporaryFile(
+            suffix=".pdf",
+            prefix=f".{output.stem}.weasy-",
+            dir=str(output.parent),
+            delete=False,
+        ) as fh:
+            tmp_path = Path(fh.name)
+        document.write_pdf(str(tmp_path))
+    finally:
+        if use_restricted:
+            if prev_fc is None:
+                os.environ.pop("FONTCONFIG_FILE", None)
+            else:
+                os.environ["FONTCONFIG_FILE"] = prev_fc
+
+    # 渲染后硬闸（双保险）：先校验临时文件，只有通过后才替换目标文件。
+    # 这样 forced WeasyPrint 失败时不会在目标路径留下坏 PDF。
+    try:
+        problems = _embedded_font_problems(tmp_path) if tmp_path else ["未生成临时 PDF"]
+        if problems:
+            raise RuntimeError(
+                "WeasyPrint 输出含 Preview 不兼容字体，回退 ReportLab：" + "；".join(problems[:3])
+            )
+        tmp_path.replace(output)
+    finally:
+        if tmp_path and tmp_path.exists() and tmp_path != output:
+            try:
+                tmp_path.unlink()
+            except Exception:
+                pass
     return pages
 
 

@@ -12,6 +12,7 @@ from pathlib import Path
 from pypdf import PdfReader
 
 CJK = r"\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF"
+EXPECTED_AUTHOR = "瓶颈侦察 v3"
 
 
 FORBIDDEN_LITERAL = [
@@ -160,6 +161,17 @@ def check_text(text: str, page_texts: list[str], is_weasy: bool = False) -> list
     return failures
 
 
+def check_metadata_and_cover(meta: dict[str, object], page_texts: list[str]) -> list[dict[str, str]]:
+    failures: list[dict[str, str]] = []
+    author = str(meta.get("author") or "")
+    if author != EXPECTED_AUTHOR:
+        failures.append({"kind": "metadata", "pattern": "unexpected_author", "sample": author})
+    first_page = page_texts[0] if page_texts else ""
+    if re.search(r"作者\s*[:：]\s*Lh\b", first_page):
+        failures.append({"kind": "metadata", "pattern": "legacy_author_lh", "sample": "作者：Lh"})
+    return failures
+
+
 def check_renderer_spacing() -> list[dict[str, str]]:
     failures: list[dict[str, str]] = []
     render_path = Path(__file__).with_name("render_pdf.py")
@@ -270,6 +282,51 @@ def make_contact_sheet(paths: list[str], output_dir: Path | None) -> str | None:
     return str(path)
 
 
+_UNSAFE_FONT_HINTS = ("pingfang", "hiragino", "songti", "stheiti", "stkaiti", "applesd")
+
+
+def check_unsafe_fonts(pdf: Path) -> list[dict[str, str]]:
+    """嵌入 macOS 系统 CJK 或 OTF/CFF 字体 → PDF 预览易乱码/掉字，判失败。"""
+    failures: list[dict[str, str]] = []
+    try:
+        reader = PdfReader(str(pdf))
+        for page in reader.pages:
+            res = page.get("/Resources")
+            fonts = res.get("/Font") if res else None
+            if not fonts:
+                continue
+            for ref in fonts.values():
+                try:
+                    obj = ref.get_object()
+                except Exception:
+                    continue
+                faces = [obj] + [d.get_object() for d in (obj.get("/DescendantFonts") or [])]
+                for fnt in faces:
+                    base = str(fnt.get("/BaseFont", "")).lower()
+                    fd = fnt.get("/FontDescriptor")
+                    embedded = False
+                    cff_embedded = False
+                    if fd is not None:
+                        try:
+                            fdo = fd.get_object()
+                            embedded = any(k in fdo for k in ("/FontFile", "/FontFile2", "/FontFile3"))
+                            cff_embedded = "/FontFile3" in fdo
+                        except Exception:
+                            embedded = False
+                            cff_embedded = False
+                    if embedded and cff_embedded:
+                        failures.append({"kind": "font", "pattern": "cff_cjk_font_embedding",
+                                         "sample": base[:50]})
+                        return failures
+                    if embedded and any(h in base for h in _UNSAFE_FONT_HINTS):
+                        failures.append({"kind": "font", "pattern": "unsafe_cjk_font_embedding",
+                                         "sample": base[:50]})
+                        return failures
+    except Exception:
+        return []
+    return failures
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("pdf", type=Path)
@@ -280,6 +337,8 @@ def main() -> int:
     text, page_texts, meta = extract_text(args.pdf)
     is_weasy = meta.get("backend") == "weasyprint"
     failures = check_text(text, page_texts, is_weasy=is_weasy)
+    failures.extend(check_metadata_and_cover(meta, page_texts))
+    failures.extend(check_unsafe_fonts(args.pdf))
     failures.extend(check_renderer_spacing())
     if not is_weasy:
         # 这条强制拉丁用 Helvetica，是 ReportLab 约定；WeasyPrint 用 Noto/DejaVu，跳过。

@@ -45,8 +45,9 @@ MODELS = {
     "minimax-m3": "anthropic",
 }
 
-API_TIMEOUT = 60
-CLI_TIMEOUT = 120
+DEFAULT_API_TIMEOUT = int(os.environ.get("BSCOUT_CROSS_VERIFY_API_TIMEOUT", "180"))
+DEFAULT_CLI_TIMEOUT = int(os.environ.get("BSCOUT_CROSS_VERIFY_CLI_TIMEOUT", "300"))
+DEFAULT_MAX_TOKENS = int(os.environ.get("BSCOUT_CROSS_VERIFY_MAX_TOKENS", "2500"))
 
 SYSTEM = {
     "redteam": (
@@ -89,7 +90,7 @@ def load_key() -> str:
     return ""
 
 
-def _api_request(url: str, body: dict, key: str, anthropic: bool) -> dict:
+def _api_request(url: str, body: dict, key: str, anthropic: bool, timeout: int) -> dict:
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {key}",
@@ -102,37 +103,46 @@ def _api_request(url: str, body: dict, key: str, anthropic: bool) -> dict:
     req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"),
                                  headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.load(resp)
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", "replace")[:300]
         raise RuntimeError(f"HTTP {exc.code} {exc.reason} | {detail}") from None
 
 
-def call_api_model(model: str, style: str, key: str, system: str, user: str) -> str:
+def call_api_model(
+    model: str,
+    style: str,
+    key: str,
+    system: str,
+    user: str,
+    *,
+    timeout: int,
+    max_tokens: int,
+) -> str:
     if style == "openai":
         data = _api_request(
             f"{BASE}/chat/completions",
             {"model": model, "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user}]},
-            key, anthropic=False)
+            key, anthropic=False, timeout=timeout)
         return data["choices"][0]["message"]["content"]
     data = _api_request(
         f"{BASE}/messages",
-        {"model": model, "max_tokens": 1500, "system": system,
+        {"model": model, "max_tokens": max_tokens, "system": system,
          "messages": [{"role": "user", "content": user}]},
-        key, anthropic=True)
+        key, anthropic=True, timeout=timeout)
     return "".join(b.get("text", "") for b in data.get("content", []))
 
 
-def call_cli(binary: str, system: str, user: str) -> str:
+def call_cli(binary: str, system: str, user: str, *, timeout: int) -> str:
     prompt = f"{system}\n\n---\n{user}"
     cmd = {
         "claude": [binary, "-p", prompt],
         "codex": [binary, "exec", prompt],
     }[os.path.basename(binary)]
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=CLI_TIMEOUT)
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     out = (proc.stdout or "").strip()
     if not out and proc.returncode != 0:
         raise RuntimeError((proc.stderr or "CLI 无输出").strip()[:300])
@@ -149,7 +159,15 @@ def detect_host() -> str:
     return ""
 
 
-def build_voices(key: str, models: list[str], use_cli: bool):
+def build_voices(
+    key: str,
+    models: list[str],
+    use_cli: bool,
+    *,
+    api_timeout: int,
+    cli_timeout: int,
+    max_tokens: int,
+):
     """返回 [(name, callable)]，并行调用。"""
     voices = []
     if key:
@@ -157,7 +175,10 @@ def build_voices(key: str, models: list[str], use_cli: bool):
             style = MODELS.get(model)
             if style:
                 voices.append((f"api:{model}",
-                               lambda s, u, m=model, st=style: call_api_model(m, st, key, s, u)))
+                               lambda s, u, m=model, st=style: call_api_model(
+                                   m, st, key, s, u,
+                                   timeout=api_timeout,
+                                   max_tokens=max_tokens)))
     if use_cli:
         host = detect_host()
         for name in ("claude", "codex"):
@@ -165,7 +186,8 @@ def build_voices(key: str, models: list[str], use_cli: bool):
                 continue
             path = shutil.which(name)
             if path:
-                voices.append((f"cli:{name}", lambda s, u, p=path: call_cli(p, s, u)))
+                voices.append((f"cli:{name}",
+                               lambda s, u, p=path: call_cli(p, s, u, timeout=cli_timeout)))
     return voices
 
 
@@ -192,6 +214,14 @@ def main() -> int:
     p.add_argument("--no-cli", action="store_true",
                    help="不调用兄弟 CLI（默认会自动用上已装的 Codex/Claude Code）")
     p.add_argument("--models", help="覆盖默认模型，逗号分隔")
+    p.add_argument("--api-timeout", type=int, default=DEFAULT_API_TIMEOUT,
+                   help=f"单个 API 模型超时秒数，默认 {DEFAULT_API_TIMEOUT}；也可用 BSCOUT_CROSS_VERIFY_API_TIMEOUT")
+    p.add_argument("--cli-timeout", type=int, default=DEFAULT_CLI_TIMEOUT,
+                   help=f"单个 CLI 模型超时秒数，默认 {DEFAULT_CLI_TIMEOUT}；也可用 BSCOUT_CROSS_VERIFY_CLI_TIMEOUT")
+    p.add_argument("--timeout", type=int,
+                   help="同时覆盖 API 和 CLI 超时秒数，适合宽主题发散")
+    p.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS,
+                   help=f"Anthropic 风格模型最大输出 token，默认 {DEFAULT_MAX_TOKENS}；也可用 BSCOUT_CROSS_VERIFY_MAX_TOKENS")
     args = p.parse_args()
 
     prompt = " ".join(args.prompt).strip() or sys.stdin.read().strip()
@@ -218,8 +248,17 @@ def main() -> int:
 
     key = load_key()
     models = [m.strip() for m in args.models.split(",")] if args.models else list(MODELS)
+    api_timeout = args.timeout or args.api_timeout
+    cli_timeout = args.timeout or args.cli_timeout
     # 默认尽量都用上：有 OpenCode 密钥就用那几个模型，装了 Codex/Claude 就自动叠加。
-    voices = build_voices(key, models, use_cli=not args.no_cli)
+    voices = build_voices(
+        key,
+        models,
+        use_cli=not args.no_cli,
+        api_timeout=api_timeout,
+        cli_timeout=cli_timeout,
+        max_tokens=args.max_tokens,
+    )
 
     label = {"diverge": "发散", "redteam": "红队", "evidence": "接地"}[mode_name]
     if not voices:
@@ -231,6 +270,7 @@ def main() -> int:
 
     print(f"# 交叉验证（{label}）· {len(voices)} 个独立声音 · 并行 · 不投票")
     print(f"输入：{prompt}\n")
+    print(f"超时设置：API {api_timeout}s，CLI {cli_timeout}s，max_tokens {args.max_tokens}\n")
     for name, text, ok in run_parallel(voices, system, user):
         print(f"\n===== {name} {'' if ok else '（缺位，按降级处理）'} =====")
         print(text)

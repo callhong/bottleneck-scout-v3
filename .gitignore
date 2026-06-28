@@ -19,5 +19,9 @@ config/.render_setup.json
 # 个人研究产物（运行时输出，不入库；examples/ 里的示例除外）
 reports/
 
+# 字体目录：默认作为本地实验/缓存，不提交 OTF/CFF；若未来要打包稳定 TTF/TTC，
+# 需要显式调整本规则和 NOTICE。
+assets/fonts/*
+
 # 临时
 *.tmp

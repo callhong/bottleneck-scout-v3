@@ -95,7 +95,7 @@ metadata:
    - 用 `scripts/render_pdf.py` 渲染，用 `scripts/validate_pdf_layout.py` 和 `scripts/validate_report.py` 验证；PDF QA 未通过时不得登记为完成。
 
 9. **保留来源与取舍记录**
-   - 读 [provenance.md](references/provenance.md)，确认 v2 吸收了哪些 Serenity/chokepoint 精华，以及明确没有吸收哪些人格化、仓位化或弱证据内容。
+   - 读 [provenance.md](references/provenance.md)，确认本 skill 吸收了哪些 Serenity/chokepoint 精华，以及明确没有吸收哪些人格化、仓位化或弱证据内容。
 
 ## Rating Labels
 
@@ -110,9 +110,8 @@ metadata:
 
 ## Useful Scripts
 
-- `scripts/validate_skill.py`: 检查 v2 文件结构、中文显示名、reference 链接、禁止项、脚本可用性。
+- `scripts/validate_skill.py`: 检查文件结构、中文显示名、reference 链接、禁止项、脚本可用性。
 - `scripts/validate_report.py`: 检查报告是否包含证据等级、Quick Filter、红队、结构化 edges、来源清单和 PDF QA 标记。
-- `scripts/compare_old_v2.py`: 对比老版与 v2 是否覆盖核心能力和硬件/软件/能源样例。
 - `scripts/graph_edges.py`: 验证结构化 edges JSON，并生成 Mermaid 依赖图。
 - `scripts/evidence_matrix.py`: 从 JSON 证据项生成瓶颈评分表。
 - `scripts/valuation_rating.py`: 从 JSON 公司项生成中文评级表。

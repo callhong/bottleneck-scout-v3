@@ -11,7 +11,7 @@ from pathlib import Path
 
 FORMAL_TEMPLATE = """# {title}
 
-作者：Lh
+作者：瓶颈侦察 v3
 生成时间：{generated}
 行情时间：TODO
 报告性质：研究分析，不构成投资建议。
@@ -135,7 +135,7 @@ TODO
 
 LIGHT_TEMPLATE = """# {title}
 
-作者：Lh
+作者：瓶颈侦察 v3
 生成时间：{generated}
 报告性质：研究分析，不构成投资建议。
 交付状态：{mode_label}

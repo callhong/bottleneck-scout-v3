@@ -32,7 +32,6 @@ REQUIRED_FILES = [
     "scripts/validate_skill.py",
     "scripts/validate_report.py",
     "scripts/graph_edges.py",
-    "scripts/compare_old_v2.py",
     "scripts/create_report_skeleton.py",
     "scripts/evidence_matrix.py",
     "scripts/freshness_check.py",

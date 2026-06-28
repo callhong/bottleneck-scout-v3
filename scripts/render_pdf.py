@@ -73,26 +73,31 @@ from reportlab.platypus.tableofcontents import TableOfContents
 FONT_FALLBACK = "STSong-Light"
 FONT = FONT_FALLBACK  # register_fonts() 探测到可内嵌的现代 CJK 字体后会改写此全局
 _FONTS_READY = False
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_SKILL_DIR = _SCRIPT_DIR.parent
+_ASSET_FONT_DIR = _SKILL_DIR / "assets" / "fonts"
 
-# 优先级：现代可内嵌 CJK 字体（TrueType/glyf 优先；CFF/OTF 在本机若不可嵌入会自动跳过）。
-# 注意：ReportLab 只能内嵌 TrueType 轮廓；Noto/Source Han 的 CFF 版常无法内嵌，会落到兜底。
+# 优先级：只选可稳定嵌入的 TrueType/TTC 字体。
+# 不再把 macOS 系统 CJK（PingFang/Hiragino/Songti/STHeiti）或 CFF/OTF
+# 作为候选；它们曾在 Apple Preview / Poppler 预览链路里造成中文乱码或掉字。
 _CJK_FONT_CANDIDATES = [
     # (注册名, [候选文件路径或 glob], 该文件在 .ttc 中的子字体序号)
-    ("SourceHanSansSC", [
-        "/usr/share/fonts/opentype/source-han-sans/SourceHanSansSC-Regular.otf",
-        "/Library/Fonts/SourceHanSansSC-Regular.otf",
+    ("BundledCJK", [
+        str(_ASSET_FONT_DIR / "cjk.ttf"),
+        str(_ASSET_FONT_DIR / "cjk.ttc"),
     ], 0),
+    ("ArialUnicode", [
+        "/Library/Fonts/Arial Unicode.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+    ], 0),
+    ("MicrosoftYaHei", ["C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/msyh.ttf"], 0),
+    ("MicrosoftJhengHei", ["C:/Windows/Fonts/msjh.ttc", "C:/Windows/Fonts/msjh.ttf"], 0),
+    ("SimSun", ["C:/Windows/Fonts/simsun.ttc", "C:/Windows/Fonts/simsun.ttf"], 0),
+    ("SimHei", ["C:/Windows/Fonts/simhei.ttf"], 0),
     ("NotoSansCJKsc", [
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
     ], 0),
-    ("PingFangSC", ["/System/Library/Fonts/PingFang.ttc"], 0),
-    ("HiraginoSansGB", ["/System/Library/Fonts/Hiragino Sans GB.ttc"], 0),
-    ("Songti", ["/System/Library/Fonts/Songti.ttc", "/System/Library/Fonts/STSong.ttf"], 0),
-    ("STHeiti", ["/System/Library/Fonts/STHeiti Medium.ttc"], 0),
-    ("MicrosoftYaHei", ["C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/msyh.ttf"], 0),
-    ("SimHei", ["C:/Windows/Fonts/simhei.ttf"], 0),
     ("WenQuanYiZenHei", [
         "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
         "/usr/share/fonts/wenquanyi/wqy-zenhei/wqy-zenhei.ttc",
@@ -101,12 +106,11 @@ _CJK_FONT_CANDIDATES = [
         "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
         "/system/fonts/DroidSansFallback.ttf",
     ], 0),
-    ("ArialUnicode", ["/Library/Fonts/Arial Unicode.ttf"], 0),
-    # 兜底 glob：任何已安装的 Source Han / Noto CJK TTF/OTF
+    # 兜底 glob：只收 TrueType/TTC，不收 OTF/CFF。
     ("CJKFallbackGlob", [
-        "/usr/share/fonts/**/*SourceHanSans*SC*.[ot]tf",
+        "/usr/share/fonts/**/*SourceHanSans*SC*.ttf",
         "/usr/share/fonts/**/*NotoSansCJK*.ttc",
-        "/usr/local/share/fonts/**/*SourceHanSans*.[ot]tf",
+        "/usr/local/share/fonts/**/*SourceHanSans*.ttf",
     ], 0),
 ]
 
@@ -208,20 +212,11 @@ class TitleBand(Flowable):
         self.canv.line(0, self.height - 0.02 * inch, self.width, self.height - 0.02 * inch)
         self.canv.setFillColor(ACCENT)
         self.canv.rect(0, 0, strip_w, self.height, fill=1, stroke=0)
-        self.canv.saveState()
-        self.canv.translate(strip_w / 2 + 0.01 * inch, 0.13 * inch)
-        self.canv.rotate(90)
-        self.canv.setFillColor(colors.white)
-        self.canv.setFont(FONT, 6.6)
-        self.canv.drawString(0, 0, "研究简报")
-        self.canv.restoreState()
 
         x = strip_w + self.padding_x
         self.canv.setFillColor(ACCENT)
         self.canv.setFont(FONT, 7.2)
-        self.canv.drawString(x, self.height - 0.17 * inch, "瓶颈侦察 v3 · 研究简报")
-        self.canv.setFillColor(MUTED)
-        self.canv.drawRightString(self.width, self.height - 0.17 * inch, "公开资料验证 · 不构成投资建议")
+        self.canv.drawString(x, self.height - 0.17 * inch, "瓶颈侦察 v3")
 
         y = self.height - self.padding_y - 0.22 * inch - self._title_height
         if self._title_para:
@@ -632,6 +627,29 @@ def normalize_report_spacing(text: str) -> str:
         part = re.sub(r"\s{2,}", " ", part)
         spaced.append(part)
     return "".join(spaced)
+
+
+def normalize_report_metadata(markdown: str) -> str:
+    """Canonicalize cover metadata at render time so stale drafts cannot leak old authors."""
+    lines = markdown.splitlines()
+    if not lines:
+        return markdown
+    first_section_idx = next((idx for idx, line in enumerate(lines) if line.startswith("## ")), len(lines))
+    title_idx = next((idx for idx, line in enumerate(lines[:first_section_idx]) if line.startswith("# ")), None)
+    if title_idx is None:
+        return markdown
+
+    author_idx = None
+    for idx in range(title_idx + 1, first_section_idx):
+        if re.match(r"\s*作者\s*[:：]", lines[idx]):
+            author_idx = idx
+            break
+    canonical = f"作者：{AUTHOR}  "
+    if author_idx is None:
+        lines.insert(title_idx + 1, canonical)
+    else:
+        lines[author_idx] = canonical
+    return "\n".join(lines) + ("\n" if markdown.endswith("\n") else "")
 
 
 def add_cjk_ascii_spacing(text: str) -> str:
@@ -1242,16 +1260,10 @@ def build_story(markdown: str, doc_width: float, include_toc: bool = False) -> l
 
 
 def draw_footer(canvas, doc):
+    # 只画底部细页脚（页码 + 免责）；不再画每页顶部重复抬头，避免每页雷同、污染版面。
     canvas.saveState()
-    width, height = doc.pagesize
-    canvas.setStrokeColor(ACCENT)
-    canvas.setLineWidth(0.8)
-    canvas.line(doc.leftMargin, height - 0.34 * inch, width - doc.rightMargin, height - 0.34 * inch)
-    canvas.setFillColor(MUTED)
-    canvas.setFont(FONT, 7.2)
-    canvas.drawString(doc.leftMargin, height - 0.26 * inch, "瓶颈侦察 v3 · 行业深度研究")
-    canvas.drawRightString(width - doc.rightMargin, height - 0.26 * inch, "公开资料验证")
     canvas.setStrokeColor(HEADER_BG)
+    canvas.setLineWidth(0.5)
     canvas.line(doc.leftMargin, 0.42 * inch, doc.pagesize[0] - doc.rightMargin, 0.42 * inch)
     canvas.setFillColor(MUTED)
     canvas.setFont(FONT, 7)
@@ -1334,6 +1346,8 @@ def _install_system_pango() -> bool:
     if system == "Darwin" and shutil.which("brew"):
         print("[render_pdf] 正在用 brew 安装 WeasyPrint 系统库（pango 等，一次性）…", file=sys.stderr)
         subprocess.run(["brew", "install", "pango", "gdk-pixbuf", "libffi"], check=False)
+        # 装一个覆盖完整、Preview 安全的 CJK 字体（Noto），让 WeasyPrint 不必回退系统 PingFang。
+        subprocess.run(["brew", "install", "--cask", "font-noto-sans-cjk-sc"], check=False)
         return True
     if system == "Linux" and shutil.which("apt-get"):
         subprocess.run(
@@ -1349,6 +1363,35 @@ def _install_system_pango() -> bool:
               file=sys.stderr)
         return False
     return False
+
+
+def _macos_brew_lib_dirs() -> list[str]:
+    import os
+    return [p for p in ("/opt/homebrew/lib", "/usr/local/lib") if os.path.isdir(p)]
+
+
+def _ensure_macos_dyld() -> None:
+    """macOS：让 dyld 能找到 brew 安装的 pango/cairo/gobject 等原生库。
+
+    macOS 默认不搜 /opt/homebrew/lib，导致 WeasyPrint 即使装了 pango 也"找不到外部库"。
+    在进程内改 DYLD 环境变量 dyld 不一定生效，所以设好后带着它**重启一次自己**（一次性）。
+    """
+    import os
+    import platform
+    import sys
+
+    if platform.system() != "Darwin" or os.environ.get("BOTTLENECK_REEXEC"):
+        return
+    libs = _macos_brew_lib_dirs()
+    if not libs:
+        return
+    cur = os.environ.get("DYLD_FALLBACK_LIBRARY_PATH", "")
+    if all(d in cur.split(":") for d in libs):
+        return
+    new_path = ":".join([p for p in cur.split(":") if p] + libs + ["/usr/lib"])
+    env = dict(os.environ, DYLD_FALLBACK_LIBRARY_PATH=new_path, BOTTLENECK_REEXEC="1")
+    sys.stderr.write("[render_pdf] 配置 macOS 动态库路径并重启一次以加载 WeasyPrint 依赖…\n")
+    os.execve(sys.executable, [sys.executable, *sys.argv], env)
 
 
 def _setup_marker() -> Path:
@@ -1391,8 +1434,10 @@ def _first_run_setup(force: bool = False) -> None:
         return
     print("[render_pdf] 首次使用，正在安装渲染依赖（一次性，可能需要几分钟）…", file=sys.stderr)
     _bootstrap_deps()
+    _ensure_macos_dyld()  # brew 库已存在时，带 DYLD 重启再探测
     weasy_ok = _probe_weasyprint()
     if not weasy_ok and _install_system_pango():
+        _ensure_macos_dyld()  # 刚装完 pango：带 DYLD 重启，新进程才能加载它
         weasy_ok = _probe_weasyprint()
     _write_marker(weasy_ok)
     print("[render_pdf] 安装完成：WeasyPrint "
@@ -1421,6 +1466,8 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    # macOS：确保 dyld 能找到 brew 的 pango 等库（必要时带 DYLD 重启一次自己）。
+    _ensure_macos_dyld()
     # 首次使用跑一遍安装（一次性，结果记入标记文件）；--setup 可强制重跑。
     _first_run_setup(force=args.setup)
     if args.setup and not args.input:
@@ -1428,7 +1475,7 @@ def main() -> int:
     if not args.input or not args.output:
         parser.error("需要 input 和 output（或单独用 --setup 只做安装）")
 
-    markdown = args.input.read_text(encoding="utf-8")
+    markdown = normalize_report_metadata(args.input.read_text(encoding="utf-8"))
     title = args.title or args.input.stem
 
     # 内部字段名/脚本名 → 中文显示（两个后端都生效）；Markdown 源文件不变，validator 仍可见英文字段。
@@ -1445,12 +1492,13 @@ def main() -> int:
     ):
         markdown = markdown.replace(_tok, _zh)
 
-    # 首次安装已探测过；若标记为不可用，auto 模式直接走 ReportLab，不再重复尝试。
-    skip_weasy = args.backend == "auto" and _weasy_known_unavailable()
-    if args.backend in ("auto", "weasyprint") and not skip_weasy:
+    # auto/weasyprint 每次都真去试 WeasyPrint（不因旧标记永久跳过）：
+    # 成功就把标记刷回可用（自愈，避免被一次性失败永久锁死降级）；失败才回退 ReportLab。
+    if args.backend in ("auto", "weasyprint"):
         try:
             import render_pdf_weasy
             pages = render_pdf_weasy.render(markdown, args.output, title)
+            _write_marker(True)
             print(f"[render_pdf] 后端: WeasyPrint（层级版式）· {pages} 页", file=sys.stderr)
             print(args.output)
             return 0
@@ -1459,7 +1507,7 @@ def main() -> int:
                 print(f"WeasyPrint 渲染失败: {exc}", file=sys.stderr)
                 return 1
             print(f"[render_pdf] WeasyPrint 不可用，回退 ReportLab：{exc}", file=sys.stderr)
-            _write_marker(False)  # 记下不可用，后续直接降级
+            _write_marker(False)
 
     markdown = _degrade_blocks_to_tables(markdown)
     include_toc = args.toc_mode == "always"
